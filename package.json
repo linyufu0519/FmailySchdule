@@ -1,0 +1,11 @@
+{
+  "name": "wangmi-family-calendar",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "旺咪家行事曆（純前端，無需後端建置）",
+  "scripts": {
+    "test": "node --test",
+    "start": "python -m http.server 8080"
+  }
+}
