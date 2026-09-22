@@ -31,13 +31,13 @@ export function renderMemberRowHTML(member) {
     </li>`;
 }
 
-/** 產生新增/編輯行程表單裡的成員複選 chip HTML */
+/** 產生新增/編輯行程表單裡的成員複選 chip HTML（僅顯示簡稱） */
 export function renderMemberCheckboxHTML(member, checked) {
   const textColor = readableTextColor(member.color);
   return `
     <label class="checkbox-chip" style="background:${checked ? member.color : "transparent"}; color:${checked ? textColor : "inherit"}; border-color:${member.color}">
       <input type="checkbox" value="${member.id}" ${checked ? "checked" : ""} />
-      ${escapeHtml(member.initial)} ${escapeHtml(member.name)}
+      ${escapeHtml(member.initial)}
     </label>`;
 }
 

@@ -3,15 +3,12 @@
 import { initTheme } from "./theme.js";
 import { buildMonthGrid, formatYearMonth, toDateKey, loadHolidays, getHolidayName } from "./calendar.js";
 import {
-  CATEGORIES,
-  getCategory,
   expandEventsInRange,
   groupOccurrencesByDate,
   getEventStartTime,
   getEventEndTime,
   detectConflicts,
   summarizeTitle,
-  renderCategoryOptionHTML,
 } from "./events.js";
 import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, validateInitial, escapeHtml } from "./members.js";
 import * as cloud from "./cloud-sync.js";
@@ -254,7 +251,6 @@ function openDayEventsModal(dateKey) {
     list.innerHTML = `<li class="day-event-item">這一天還沒有行程</li>`;
   }
   occurrences.forEach(({ event }) => {
-    const category = getCategory(event.category);
     const memberNames = (event.memberIds || [])
       .map((id) => state.members.find((m) => m.id === id))
       .filter(Boolean);
@@ -270,7 +266,6 @@ function openDayEventsModal(dateKey) {
       <div class="event-time">${getEventStartTime(event)} ～ ${getEventEndTime(event)}${event.isRecurring ? "（重複）" : ""}</div>
       <div class="event-summary">${escapeHtml(summary)}${needsMore ? ` <span class="more-link" data-action="detail">...詳細</span>` : ""}</div>
       <div class="event-meta">
-        <span class="category-badge" style="background:${category.color}">${category.label}</span>
         ${memberChips}
       </div>
       <div class="event-actions">
@@ -289,7 +284,6 @@ function openDayEventsModal(dateKey) {
 }
 
 function openEventDetail(event) {
-  const category = getCategory(event.category);
   const memberNames = (event.memberIds || [])
     .map((id) => state.members.find((m) => m.id === id))
     .filter(Boolean)
@@ -298,7 +292,6 @@ function openEventDetail(event) {
   el("event-detail-body").innerHTML = `
     <p><strong>時間：</strong>${getEventStartTime(event)} ～ ${getEventEndTime(event)}</p>
     <p><strong>成員：</strong>${escapeHtml(memberNames || "無")}</p>
-    <p><strong>分類：</strong><span class="category-badge" style="background:${category.color}">${category.label}</span></p>
     <p><strong>重複規則：</strong>${recurrenceLabel(event)}</p>
     <p class="detail-content"><strong>內容：</strong>${escapeHtml(event.title)}</p>
   `;
@@ -374,32 +367,38 @@ function openEventForm({ event, dateKey }) {
   el("event-end-time").value = event ? getEventEndTime(event) : "10:00";
   el("event-content").value = event ? event.title : "";
   el("event-recurrence").value = event && event.isRecurring ? event.recurrenceRule : "none";
+  // 每次開啟表單都重置「結束時間是否已被使用者手動改過」的追蹤旗標
+  endTimeManuallyEdited = false;
 
   const checkedIds = event ? event.memberIds || [] : [];
   el("event-members-checkboxes").innerHTML = state.members
     .map((m) => renderMemberCheckboxHTML(m, checkedIds.includes(m.id)))
     .join("");
 
-  const selectedCategory = event ? event.category : CATEGORIES[0].id;
-  renderCategoryOptions(selectedCategory);
-
   openModal("modal-event-form");
-}
-
-function renderCategoryOptions(selectedId) {
-  const container = el("event-category-options");
-  container.innerHTML = CATEGORIES.map((c) => renderCategoryOptionHTML(c, c.id === selectedId)).join("");
-  container.querySelectorAll(".category-option").forEach((label) => {
-    label.addEventListener("click", () => {
-      container.querySelectorAll(".category-option").forEach((l) => l.classList.remove("selected"));
-      label.classList.add("selected");
-    });
-  });
 }
 
 function getFormMemberIds() {
   return Array.from(el("event-members-checkboxes").querySelectorAll("input[type=checkbox]:checked")).map((i) => i.value);
 }
+
+// 開始時間變更時，若使用者尚未手動改過結束時間，自動帶入「開始時間 + 1小時」
+let endTimeManuallyEdited = false;
+function addOneHour(timeStr) {
+  const [h, m] = timeStr.split(":").map(Number);
+  const total = Math.min(h * 60 + m + 60, 23 * 60 + 59);
+  const hh = String(Math.floor(total / 60)).padStart(2, "0");
+  const mm = String(total % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+el("event-start-time").addEventListener("input", () => {
+  if (!endTimeManuallyEdited && el("event-start-time").value) {
+    el("event-end-time").value = addOneHour(el("event-start-time").value);
+  }
+});
+el("event-end-time").addEventListener("input", () => {
+  endTimeManuallyEdited = true;
+});
 
 // 即時衝突偵測：欄位變動時檢查一次
 ["event-date", "event-start-time", "event-end-time"].forEach((id) => {
@@ -421,6 +420,15 @@ function checkConflictPreview() {
   el("event-conflict-warning").classList.toggle("hidden", conflicts.length === 0);
 }
 
+function upsertLocalEvent(newEvent) {
+  const idx = state.events.findIndex((e) => e.id === newEvent.id);
+  if (idx >= 0) {
+    state.events = [...state.events.slice(0, idx), newEvent, ...state.events.slice(idx + 1)];
+  } else {
+    state.events = [...state.events, newEvent];
+  }
+}
+
 el("event-form").addEventListener("submit", async (evt) => {
   evt.preventDefault();
   if (!requireLogin()) return;
@@ -435,7 +443,6 @@ el("event-form").addEventListener("submit", async (evt) => {
   }
   const memberIds = getFormMemberIds();
   const title = el("event-content").value.trim();
-  const category = el("event-category-options").querySelector("input:checked")?.value || CATEGORIES[0].id;
   const recurrenceValue = el("event-recurrence").value;
   const now = new Date().toISOString();
 
@@ -445,7 +452,6 @@ el("event-form").addEventListener("submit", async (evt) => {
     memberIds,
     startAt: `${dateKey}T${startTime}`,
     endAt: `${dateKey}T${endTime}`,
-    category,
     isRecurring: recurrenceValue !== "none",
     recurrenceRule: recurrenceValue,
     exceptions: existing ? existing.exceptions || [] : [],
@@ -454,15 +460,20 @@ el("event-form").addEventListener("submit", async (evt) => {
   };
 
   try {
+    let savedId = id;
     if (id) {
       await cloud.updateEvent(id, payload);
       showToast("行程已更新");
     } else {
-      await cloud.addEvent(payload);
+      savedId = await cloud.addEvent(payload);
       showToast("行程已新增");
     }
+    // 樂觀更新本地狀態，不等待 Firestore onSnapshot 回傳，
+    // 確保儲存後立即重新開啟當天行程 Modal 就能看到最新內容。
+    upsertLocalEvent({ ...payload, id: savedId });
     closeModal("modal-event-form");
-    closeModal("modal-day-events");
+    renderCalendar();
+    openDayEventsModal(dateKey);
   } catch (error) {
     showToast("儲存失敗，請稍後再試");
   }
