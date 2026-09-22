@@ -241,6 +241,8 @@ function openDayEventsModal(dateKey) {
   currentDayKey = dateKey;
   const [y, m, d] = dateKey.split("-").map(Number);
   el("day-events-title").textContent = `${y}年${m}月${d}日 行程`;
+  // 修正：先前遺漏開啟 Modal，導致點日期後清單已渲染卻看不到畫面
+  openModal("modal-day-events");
 
   const occurrences = expandEventsInRange(state.events, dateKey, dateKey);
   occurrences.sort((a, b) => getEventStartTime(a.event).localeCompare(getEventStartTime(b.event)));
