@@ -70,7 +70,7 @@ body {
 }
 .icon-btn:hover { background: var(--color-bg); }
 
-/* Auth bar */
+/* Auth bar（僅顯示雲端同步/唯讀狀態文字，無登入表單） */
 .auth-bar {
   padding: 0.6rem 1rem;
   font-size: 0.85rem;
@@ -78,24 +78,6 @@ body {
   border-bottom: 1px solid var(--color-border);
 }
 .auth-status { color: var(--color-text-muted); }
-.auth-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-}
-.auth-controls input {
-  flex: 1 1 120px;
-  min-width: 0;
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  font-size: 16px; /* 避免 iOS Safari 因 <16px 輸入框自動放大，導致頁面位移需手動縮放 */
-}
-.auth-message { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--color-danger); }
-.auth-message:empty { display: none; }
 
 /* Search */
 .search-panel {

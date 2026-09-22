@@ -15,17 +15,9 @@
     </div>
   </header>
 
-  <!-- 帳號登入列：全家共用一組帳號 -->
+  <!-- 雲端同步狀態列：不提供登入 UI，改由隱藏連結 (?key=...) 靜默登入，詳見 FIREBASE_SETUP.md -->
   <section id="auth-bar" class="auth-bar">
     <span id="auth-status" class="auth-status">離線模式，尚未設定雲端同步</span>
-    <div id="auth-controls" class="auth-controls">
-      <input id="auth-email" type="email" placeholder="Email" autocomplete="username" />
-      <input id="auth-password" type="password" placeholder="密碼" autocomplete="current-password" />
-      <button id="btn-login" class="btn btn-small">登入</button>
-      <button id="btn-signup" class="btn btn-small btn-secondary">註冊(首次使用)</button>
-      <button id="btn-logout" class="btn btn-small btn-secondary hidden">登出</button>
-    </div>
-    <p id="auth-message" class="auth-message"></p>
   </section>
 
   <!-- 搜尋面板 -->
