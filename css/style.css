@@ -306,12 +306,6 @@ body {
 .day-event-item .event-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
 .day-event-item .event-actions { margin-top: 0.4rem; display: flex; gap: 0.4rem; }
 .day-event-item .event-actions .btn { padding: 0.3rem 0.6rem; font-size: 0.75rem; }
-.category-badge {
-  font-size: 0.65rem;
-  padding: 1px 6px;
-  border-radius: 10px;
-  color: #fff;
-}
 
 /* Forms */
 .form { display: flex; flex-direction: column; gap: 0.25rem; }
@@ -345,19 +339,6 @@ body {
   cursor: pointer;
 }
 .checkbox-chip input { margin: 0; }
-.category-options { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.category-option {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  border: 2px solid transparent;
-  border-radius: 20px;
-  padding: 0.3rem 0.7rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  color: #fff;
-}
-.category-option.selected { border-color: var(--color-text); }
 .conflict-warning {
   background: #fef3c7;
   color: #92400e;

@@ -12,7 +12,7 @@
   不需要每個成員各自申請帳號。
 - 使用 **Cloud Firestore** 儲存資料，路徑為：
   - `family/{familyId}/members/{memberId}`：家庭成員（姓名、簡稱、顏色）
-  - `family/{familyId}/events/{eventId}`：行程（內容、成員、時間、分類、重複規則）
+  - `family/{familyId}/events/{eventId}`：行程（內容、成員、時間、重複規則）
   - `familyId` 目前寫死為 `default`（單一家庭使用情境），之後如需支援多個家庭，可在
     `js/cloud-sync.js` 的 `FAMILY_ID` 常數調整。
 - 前端透過 Firebase 官方 CDN 的 **Web modular SDK**（`https://www.gstatic.com/firebasejs/...`）

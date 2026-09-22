@@ -10,7 +10,6 @@ function makeEvent(overrides) {
     memberIds: ["m1"],
     startAt: "2026-01-05T09:00",
     endAt: "2026-01-05T10:00",
-    category: "other",
     isRecurring: false,
     recurrenceRule: "none",
     exceptions: [],
@@ -32,11 +31,31 @@ test("每週重複行程在相同星期幾出現", () => {
   assert.equal(occursOnDate(event, "2026-01-13"), false); // 隔天不同星期
 });
 
+test("每週重複行程固定展開本次+未來4週共5次，第6次不再出現", () => {
+  const event = makeEvent({ isRecurring: true, recurrenceRule: "weekly" });
+  assert.equal(occursOnDate(event, "2026-01-05"), true); // 第1次（本次）
+  assert.equal(occursOnDate(event, "2026-01-12"), true); // 第2次
+  assert.equal(occursOnDate(event, "2026-01-19"), true); // 第3次
+  assert.equal(occursOnDate(event, "2026-01-26"), true); // 第4次
+  assert.equal(occursOnDate(event, "2026-02-02"), true); // 第5次（未來第4週）
+  assert.equal(occursOnDate(event, "2026-02-09"), false); // 第6次已超出範圍，不再出現
+});
+
 test("每月重複行程在相同日期出現，超出天數時對齊月底", () => {
   const event = makeEvent({ startAt: "2026-01-31T09:00", endAt: "2026-01-31T10:00", isRecurring: true, recurrenceRule: "monthly" });
   assert.equal(occursOnDate(event, "2026-01-31"), true);
   assert.equal(occursOnDate(event, "2026-02-28"), true); // 2月無31日，順延至月底
   assert.equal(occursOnDate(event, "2026-03-31"), true);
+});
+
+test("每月重複行程固定展開本次+未來4個月共5次，第6次不再出現", () => {
+  const event = makeEvent({ isRecurring: true, recurrenceRule: "monthly" });
+  assert.equal(occursOnDate(event, "2026-01-05"), true); // 第1次（本次）
+  assert.equal(occursOnDate(event, "2026-02-05"), true); // 第2次
+  assert.equal(occursOnDate(event, "2026-03-05"), true); // 第3次
+  assert.equal(occursOnDate(event, "2026-04-05"), true); // 第4次
+  assert.equal(occursOnDate(event, "2026-05-05"), true); // 第5次（未來第4個月）
+  assert.equal(occursOnDate(event, "2026-06-05"), false); // 第6次已超出範圍，不再出現
 });
 
 test("exceptions 中列出的日期即使符合規則也不出現（刪除本次）", () => {

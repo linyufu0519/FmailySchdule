@@ -2,16 +2,8 @@
 // 行程資料結構、重複規則展開、時段衝突偵測。核心邏輯為純函式，方便測試。
 import { parseDateKey } from "./calendar.js";
 
-export const CATEGORIES = [
-  { id: "medical", label: "就醫", color: "#ef4444" },
-  { id: "school", label: "上學", color: "#3b82f6" },
-  { id: "dining", label: "聚餐", color: "#10b981" },
-  { id: "other", label: "其他", color: "#6b7280" },
-];
-
-export function getCategory(categoryId) {
-  return CATEGORIES.find((c) => c.id === categoryId) || CATEGORIES[CATEGORIES.length - 1];
-}
+// 重複行程固定展開次數：本次 + 接下來 4 次，共 5 次（週/月皆同邏輯，不無限展開）
+const MAX_RECURRING_OCCURRENCES = 5;
 
 /** 從 event.startAt / endAt ("YYYY-MM-DDTHH:MM") 拆出日期與時間字串 */
 export function getEventDateKey(event) {
@@ -46,17 +38,25 @@ export function occursOnDate(event, dateKey) {
   const targetDate = parseDateKey(dateKey);
 
   if (event.recurrenceRule === "weekly") {
-    return anchorDate.getDay() === targetDate.getDay();
+    if (anchorDate.getDay() !== targetDate.getDay()) return false;
+    const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+    const weeksDiff = Math.round((targetDate.getTime() - anchorDate.getTime()) / MS_PER_WEEK);
+    // 固定展開「本次 + 未來4週」共5次，不再無限展開
+    return weeksDiff >= 0 && weeksDiff <= MAX_RECURRING_OCCURRENCES - 1;
   }
   if (event.recurrenceRule === "monthly") {
     const anchorDay = anchorDate.getDate();
     const targetDay = targetDate.getDate();
     const isLastDayOfTargetMonth = targetDay === daysInMonth(targetDate.getFullYear(), targetDate.getMonth());
-    // 若原始日期(如31日)在目標月份不存在，順延對齊到該月最後一天
-    if (anchorDay > daysInMonth(targetDate.getFullYear(), targetDate.getMonth())) {
-      return isLastDayOfTargetMonth;
-    }
-    return anchorDay === targetDay;
+    const matchesDay =
+      anchorDay > daysInMonth(targetDate.getFullYear(), targetDate.getMonth())
+        ? isLastDayOfTargetMonth // 若原始日期(如31日)在目標月份不存在，順延對齊到該月最後一天
+        : anchorDay === targetDay;
+    if (!matchesDay) return false;
+    const monthsDiff =
+      (targetDate.getFullYear() - anchorDate.getFullYear()) * 12 + (targetDate.getMonth() - anchorDate.getMonth());
+    // 固定展開「本次 + 未來4個月」共5次，不再無限展開
+    return monthsDiff >= 0 && monthsDiff <= MAX_RECURRING_OCCURRENCES - 1;
   }
   return false;
 }
@@ -132,13 +132,4 @@ export function summarizeTitle(title, maxLen = 24) {
   if (!title) return "";
   if (title.length <= maxLen) return title;
   return `${title.slice(0, maxLen)}...`;
-}
-
-/** 產生分類選擇按鈕 HTML（新增/編輯行程表單用） */
-export function renderCategoryOptionHTML(category, selected) {
-  return `
-    <label class="category-option${selected ? " selected" : ""}" style="background:${category.color}">
-      <input type="radio" name="event-category" value="${category.id}" ${selected ? "checked" : ""} class="hidden" />
-      ${category.label}
-    </label>`;
 }
