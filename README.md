@@ -26,8 +26,8 @@
   之後年度需手動更新）。
 - **搜尋**：依關鍵字（行程內容）或成員姓名搜尋，列出符合的行程並可點擊跳轉到該月份日期。
 - **深色模式**：右上角切換按鈕，記住使用者偏好（`localStorage`），套用在所有頁面元件。
-- **帳號登入**：全家共用一組 Firebase Email/Password 帳號，登入後才能新增/編輯/刪除資料；
-  重整頁面或關閉瀏覽器後仍保持登入（`browserLocalPersistence`）。
+- **隱藏連結存取**：不提供登入表單，網址帶對 `?key=密鑰` 才會自動用全家共用帳號靜默登入，
+  可讀寫資料；沒帶或帶錯維持唯讀瀏覽，不會有任何錯誤畫面（`js/access.js`）。
 
 ## 本機預覽
 
@@ -41,17 +41,19 @@ python -m http.server 8080
 ```
 
 未設定 `js/firebase-config.js` 時也能正常開啟，會顯示「離線模式，尚未設定雲端同步」，
-月曆瀏覽功能正常，僅新增/編輯資料的按鈕會提示需要先設定並登入。
+月曆瀏覽功能正常，僅新增/編輯資料的按鈕會提示需要先設定；已設定但網址未帶對 `?key=`
+則會顯示「唯讀模式（無存取權限）」，同樣僅能瀏覽、不能新增/編輯。
 
 ## Firebase 設定與雲端同步
 
 請參考 [`FIREBASE_SETUP.md`](./FIREBASE_SETUP.md) 完成以下設定：
 
 1. 建立 Firebase 專案、新增 Web 應用程式取得 `firebaseConfig`
-2. 啟用 Email/Password 登入
+2. 啟用 Email/Password 登入，註冊一組全家共用帳號
 3. 建立 Firestore Database 並設定 Security Rules
 4. 複製 `js/firebase-config.example.js` 為 `js/firebase-config.js` 並填入設定值
-5. 部署到 GitHub Pages 後，視需求決定是否用 `git add -f` 讓正式站台也啟用雲端同步
+5. 複製 `js/access-config.example.js` 為 `js/access-config.js`，設定隱藏連結密鑰與共用帳密
+6. 部署到 GitHub Pages 後，視需求決定是否用 `git add -f` 讓正式站台也啟用雲端同步/隱藏連結
 
 ## 部署方式（GitHub Pages）
 
@@ -65,7 +67,7 @@ python -m http.server 8080
 ```
 index.html                    月曆首頁 + 所有 Modal
 css/style.css                 樣式（含 light/dark 主題變數、RWD）
-js/app.js                     主流程：月曆渲染、Modal、表單、搜尋、登入串接
+js/app.js                     主流程：月曆渲染、Modal、表單、搜尋、隱藏連結自動登入串接
 js/calendar.js                月曆計算、假日查詢（純函式）
 js/holidays.json              台灣國定假日資料（2026 年度）
 js/events.js                  行程資料結構、重複規則展開、衝突偵測（純函式）
@@ -73,6 +75,10 @@ js/members.js                 成員顯示輔助函式
 js/firebase-config-status.js  Firebase 設定完整性判斷（純函式）
 js/firebase-config.example.js Firebase 設定範本（可 commit）
 js/firebase-config.js         實際 Firebase 設定（.gitignore 排除，需自行建立）
+js/access-config-status.js    隱藏連結密鑰比對邏輯（純函式）
+js/access-config.example.js   隱藏連結密鑰與共用帳密範本（可 commit）
+js/access-config.js           實際密鑰與共用帳密（.gitignore 排除，需自行建立）
+js/access.js                  隱藏連結自動登入邏輯（讀取 access-config.js、比對 ?key=）
 js/cloud-sync.js              Firebase Auth + Firestore 封裝
 js/theme.js                   深色模式切換
 FIREBASE_SETUP.md             Firebase 設定教學
@@ -82,7 +88,7 @@ tests/                        純函式測試（Node 內建 test runner）+ 手�
 ## 執行測試
 
 `tests/` 內為 Node 內建 `node:test` 撰寫的純函式測試（假日查詢、重複規則展開、衝突偵測、
-Firebase 設定完整性判斷），不需要額外安裝套件：
+Firebase 設定完整性判斷、隱藏連結密鑰比對），不需要額外安裝套件：
 
 ```bash
 node --test

@@ -12,6 +12,7 @@ import {
 } from "./events.js";
 import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, validateInitial, escapeHtml } from "./members.js";
 import * as cloud from "./cloud-sync.js";
+import { resolveAutoSignIn } from "./access.js";
 
 const state = {
   today: new Date(),
@@ -91,7 +92,7 @@ function onEventsChanged(events) {
   renderCalendar();
 }
 
-// ---------- Firebase / 帳號登入 ----------
+// ---------- Firebase / 隱藏連結自動登入 ----------
 async function bootCloud() {
   const { enabled } = await cloud.initCloud();
   state.cloudEnabled = enabled;
@@ -99,7 +100,7 @@ async function bootCloud() {
     el("auth-status").textContent = "離線模式，尚未設定雲端同步（見 FIREBASE_SETUP.md）";
     return;
   }
-  el("auth-status").textContent = "雲端同步已啟用，尚未登入";
+  el("auth-status").textContent = "雲端同步已啟用，唯讀模式（無存取權限）";
   cloud.subscribeAuthState((user) => {
     state.currentUser = user;
     updateAuthUI();
@@ -115,42 +116,23 @@ async function bootCloud() {
       renderCalendar();
     }
   });
+  // 網址帶對 ?key= 才嘗試靜默登入；沒帶或帶錯一律維持唯讀，不嘗試登入也不報錯
+  const credentials = await resolveAutoSignIn(window.location.search);
+  if (credentials) {
+    try {
+      await cloud.signInWithEmail(credentials.email, credentials.password);
+    } catch (error) {
+      // 靜默失敗，維持唯讀狀態，不對使用者顯示任何錯誤
+    }
+  }
 }
 bootCloud();
 
 function updateAuthUI() {
+  if (!state.cloudEnabled) return;
   const loggedIn = !!state.currentUser;
-  el("btn-login").classList.toggle("hidden", loggedIn);
-  el("btn-signup").classList.toggle("hidden", loggedIn);
-  el("btn-logout").classList.toggle("hidden", !loggedIn);
-  el("auth-email").classList.toggle("hidden", loggedIn);
-  el("auth-password").classList.toggle("hidden", loggedIn);
-  if (state.cloudEnabled) {
-    el("auth-status").textContent = loggedIn ? `雲端同步完成（${state.currentUser.email}）` : "雲端同步已啟用，尚未登入";
-  }
+  el("auth-status").textContent = loggedIn ? "已連線（可編輯）" : "唯讀模式（無存取權限）";
 }
-
-el("btn-login").addEventListener("click", async () => {
-  const email = el("auth-email").value.trim();
-  const password = el("auth-password").value;
-  el("auth-message").textContent = "";
-  try {
-    await cloud.signInWithEmail(email, password);
-  } catch (error) {
-    el("auth-message").textContent = "登入失敗，請確認 Email 或密碼是否正確";
-  }
-});
-el("btn-signup").addEventListener("click", async () => {
-  const email = el("auth-email").value.trim();
-  const password = el("auth-password").value;
-  el("auth-message").textContent = "";
-  try {
-    await cloud.signUpWithEmail(email, password);
-  } catch (error) {
-    el("auth-message").textContent = "註冊失敗：" + (error.message || "請稍後再試");
-  }
-});
-el("btn-logout").addEventListener("click", () => cloud.signOutCloud());
 
 function requireLogin() {
   if (!state.cloudEnabled) {
@@ -158,7 +140,7 @@ function requireLogin() {
     return false;
   }
   if (!state.currentUser) {
-    showToast("請先登入家庭帳號才能新增/編輯資料");
+    showToast("目前為唯讀模式，請使用家人分享的專屬連結才能新增/編輯資料");
     return false;
   }
   return true;
