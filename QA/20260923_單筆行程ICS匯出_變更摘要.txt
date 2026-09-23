@@ -30,9 +30,11 @@
   程式位置二：js/calendar-export.js、js/app.js
   函式／區塊：openCalendarExport、exportEventToCalendar
   說明：Storage HTTPS 匯出的瀏覽器互動流程。
-  異動：click handler 同步開啟 placeholder 並顯示準備訊息，再非同步上傳。
-        成功後導向 getDownloadURL；popup 被阻擋時改導向目前頁面；失敗時關閉
-        placeholder、解除按鈕 loading、記錄 console.error 並顯示 toast。
+  異動：click handler 立即設定按鈕 loading（顯示「正在準備…」），非同步上傳
+        ICS 至 Storage。成功後在**目前分頁**用 windowObject.location.assign()
+        導向 getDownloadURL，不開新分頁；失敗時停留原頁、解除 loading、記錄
+        console.error 並顯示錯誤 toast。使用者完成或取消行事曆匯入後可用瀏覽器
+        返回鍵回到家庭行事曆頁面。
 
   ─────────────────────────────────────────────────────────────────────────────
 
@@ -46,9 +48,10 @@
   ─────────────────────────────────────────────────────────────────────────────
 
   程式位置四：tests/calendar-storage.test.js、tests/calendar-export.test.js
-  說明：Storage 安全路徑、metadata 與 popup 流程測試。
+  說明：Storage 安全路徑、metadata 與同頁導向流程測試。
   異動：驗證路徑不含標題/成員、UUID 唯一、familyId、MIME、metadata，以及
-        placeholder 必須早於 await、成功導向、popup blocked fallback、失敗關閉與回報。
+        成功時於目前頁面 location.assign 導向下載網址、失敗時不導向並回報
+        onError、loading 狀態正確恢復。已移除舊版 placeholder/popup 相關測試。
 
   ─────────────────────────────────────────────────────────────────────────────
 
@@ -78,9 +81,9 @@
   2. 從詳細 Modal 下載相同行程，確認內容一致。
   3. 點選重複行程第二次 occurrence，確認 ICS 日期為當次日期且沒有 RRULE。
   4. 使用含逗號、分號、反斜線與換行的標題，確認匯入後文字完整。
-  5. iPhone Safari 點擊後確認立即開啟準備頁，完成後導向 HTTPS .ics。
-  6. 模擬 popup blocked，確認上傳完成後目前頁面仍會導向下載 URL。
-  7. 模擬 Storage 上傳失敗，確認 placeholder 關閉並顯示明確錯誤 toast。
-  8. 定期檢查 calendar-exports 檔案清理或 Lifecycle Policy 是否生效。
+  5. iPhone Safari 點擊後確認按鈕立即顯示「正在準備…」，完成後於目前分頁
+     導向 HTTPS .ics，可用返回鍵回到家庭行事曆。
+  6. 模擬 Storage 上傳失敗，確認停留原頁、顯示明確錯誤 toast 並解除 loading。
+  7. 定期檢查 calendar-exports 檔案清理或 Lifecycle Policy 是否生效。
 
 ================================================================================

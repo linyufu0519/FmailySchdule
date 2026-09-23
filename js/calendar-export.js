@@ -1,11 +1,7 @@
 import { buildIcsContent } from "./ics-export.js";
 
-function showPreparingMessage(previewWindow) {
-  if (!previewWindow?.document?.body) return;
-  previewWindow.document.title = "正在準備行事曆";
-  previewWindow.document.body.textContent = "正在準備行事曆…";
-}
-
+// 產生 ICS 並上傳 Firebase Storage，成功後於「目前頁面」導向下載網址
+// （不開新分頁，使用者可用瀏覽器返回鍵回到行事曆）。
 export function openCalendarExport({
   event,
   occurrenceDateKey,
@@ -15,8 +11,6 @@ export function openCalendarExport({
   setLoading = () => {},
   onError = () => {},
 }) {
-  const previewWindow = windowObject.open("", "_blank");
-  showPreparingMessage(previewWindow);
   setLoading(true);
 
   const uploadPromise = Promise.resolve().then(() => {
@@ -26,15 +20,10 @@ export function openCalendarExport({
 
   return uploadPromise
     .then((downloadUrl) => {
-      if (previewWindow) {
-        previewWindow.location.replace(downloadUrl);
-      } else {
-        windowObject.location.href = downloadUrl;
-      }
+      windowObject.location.assign(downloadUrl);
       return downloadUrl;
     })
     .catch((error) => {
-      previewWindow?.close();
       onError(error);
       throw error;
     })
