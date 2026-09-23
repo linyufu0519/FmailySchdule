@@ -1,6 +1,6 @@
 // js/access.js
 // URL key 同時作為家庭識別碼；前端不保存任何帳密或固定密鑰。
-const FAMILY_KEY_PATTERN = /^[A-Za-z0-9_-]{16,128}$/;
+const FAMILY_KEY_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
 
 /**
  * 驗證家庭 key。只允許適合 Firestore 文件路徑的安全字元。
