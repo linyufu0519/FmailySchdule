@@ -13,6 +13,7 @@ import {
 import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, validateInitial, escapeHtml } from "./members.js";
 import * as cloud from "./cloud-sync.js";
 import { resolveFamilyId } from "./access.js";
+import { downloadIcs } from "./ics-export.js";
 
 const state = {
   today: new Date(),
@@ -237,7 +238,7 @@ function openDayEventsModal(dateKey) {
   if (occurrences.length === 0) {
     list.innerHTML = `<li class="day-event-item">這一天還沒有行程</li>`;
   }
-  occurrences.forEach(({ event }) => {
+  occurrences.forEach(({ event, dateKey }) => {
     const memberNames = (event.memberIds || [])
       .map((id) => state.members.find((m) => m.id === id))
       .filter(Boolean);
@@ -256,13 +257,17 @@ function openDayEventsModal(dateKey) {
         ${memberChips}
       </div>
       <div class="event-actions">
+        <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
         <button class="btn btn-secondary" data-action="edit">編輯</button>
         <button class="btn btn-danger" data-action="delete">刪除</button>
       </div>
     `;
-    li.querySelector('[data-action="detail"]')?.addEventListener("click", () => openEventDetail(event));
+    li.querySelector('[data-action="detail"]')?.addEventListener("click", () => openEventDetail(event, dateKey));
     li.querySelector('.event-summary').addEventListener("click", (e) => {
-      if (e.target.dataset.action !== "detail") openEventDetail(event);
+      if (e.target.dataset.action !== "detail") openEventDetail(event, dateKey);
+    });
+    li.querySelector('[data-action="calendar"]').addEventListener("click", () => {
+      downloadIcs(withMemberNames(event), dateKey);
     });
     li.querySelector('[data-action="edit"]').addEventListener("click", () => openEventForm({ event, dateKey }));
     li.querySelector('[data-action="delete"]').addEventListener("click", () => confirmDeleteEvent(event, dateKey));
@@ -270,7 +275,14 @@ function openDayEventsModal(dateKey) {
   });
 }
 
-function openEventDetail(event) {
+function withMemberNames(event) {
+  const memberNames = (event.memberIds || [])
+    .map((id) => state.members.find((member) => member.id === id)?.name)
+    .filter(Boolean);
+  return { ...event, memberNames };
+}
+
+function openEventDetail(event, occurrenceDateKey) {
   const memberNames = (event.memberIds || [])
     .map((id) => state.members.find((m) => m.id === id))
     .filter(Boolean)
@@ -281,7 +293,11 @@ function openEventDetail(event) {
     <p><strong>成員：</strong>${escapeHtml(memberNames || "無")}</p>
     <p><strong>重複規則：</strong>${recurrenceLabel(event)}</p>
     <p class="detail-content"><strong>內容：</strong>${escapeHtml(event.title)}</p>
+    <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
   `;
+  el("event-detail-body")
+    .querySelector('[data-action="calendar"]')
+    .addEventListener("click", () => downloadIcs(withMemberNames(event), occurrenceDateKey));
   openModal("modal-event-detail");
 }
 

@@ -11,6 +11,8 @@
   `+N` 省略顯示）。
 - **當日行程列表（Modal）**：依開始時間排序，每筆顯示固定長度摘要，超過長度顯示
   「...詳細」可展開完整內容（含成員、時間）；可從此處新增、編輯、刪除行程。
+- **加入手機行事曆**：當日列表與行程詳情皆可將單次行程下載為標準 `.ics`；重複行程只匯出
+  當下查看的那一次，可由 iPhone Safari 開啟後加入行事曆。
 - **新增／編輯行程**：
   - 相關家庭成員複選（checkbox，僅顯示各自簡稱與顏色）
   - 開始／結束時間（同一天內；選好開始時間後，若尚未手動改過結束時間，會自動帶入
@@ -71,6 +73,7 @@ js/app.js                     主流程：月曆渲染、Modal、表單、搜尋
 js/calendar.js                月曆計算、假日查詢（純函式）
 js/holidays.json              台灣國定假日資料（2026 年度）
 js/events.js                  行程資料結構、重複規則展開、衝突偵測（純函式）
+js/ics-export.js              單次行程 iCalendar 內容產生與下載
 js/members.js                 成員顯示輔助函式
 js/firebase-config-status.js  Firebase 設定完整性判斷（純函式）
 js/firebase-config.example.js Firebase 設定範本（可 commit）
