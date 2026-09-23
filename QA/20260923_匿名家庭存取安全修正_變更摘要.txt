@@ -1,0 +1,94 @@
+================================================================================
+  20260923 旺咪家行事曆 — 匿名家庭存取安全修正 變更摘要
+  日期：2026-09-23
+================================================================================
+
+【USER 需求】
+  移除公開 GitHub Pages 中的共用 Email、密碼與固定密鑰，改用網址中的高強度
+  家庭 key 作為 Firestore familyId，並透過 Firebase Anonymous Auth 靜默登入。
+  缺少或格式不合法的 key 必須維持唯讀，不得登入或讀寫 Firestore。
+
+--------------------------------------------------------------------------------
+
+【影響範圍】
+
+  程式位置一：js/access.js
+  函式／區塊：isValidFamilyKey、resolveFamilyId
+  說明：解析家庭專屬網址並驗證 familyId。
+  異動：移除固定密鑰比對與 access-config 載入，改為限制 32～128 碼且只允許
+        英數、底線與連字號。
+
+  修改前：
+    const config = await loadAccessConfig();
+    if (!matchesAccessKey(config.secretKey, providedKey)) return null;
+    return { email: sharedEmail, password: sharedPassword };
+
+  修改後：
+    const FAMILY_KEY_PATTERN = /^[A-Za-z0-9_-]{32,128}$/;
+    const familyId = new URLSearchParams(search || "").get("key");
+    return isValidFamilyKey(familyId) ? familyId : null;
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置二：js/cloud-sync.js
+  函式／區塊：setFamilyId、signInAnonymously、Firestore collection helpers
+  說明：封裝 Firebase Authentication 與家庭資料路徑。
+  異動：移除 Email/Password Auth 與固定 FAMILY_ID，改為執行期設定 familyId，
+        並使用 signInAnonymously()。
+
+  修改前：
+    export const FAMILY_ID = "default";
+    return authModule.signInWithEmailAndPassword(auth, email, password);
+
+  修改後：
+    let currentFamilyId = null;
+    return authModule.signInAnonymously(auth);
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置三：js/app.js
+  函式／區塊：bootCloud
+  說明：網站啟動時決定是否連線 Firebase。
+  異動：無 key 或格式不合法時立即進入唯讀模式；合法 key 才初始化 Firebase、
+        設定 familyId、匿名登入並訂閱成員與行程。
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置四：js/access-config.js、js/access-config.example.js
+  說明：舊版公開帳密與固定密鑰設定。
+  異動：自版本庫刪除，不再建立或部署任何 access-config 檔案。
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置五：README.md、FIREBASE_SETUP.md、tests/MANUAL_CHECKLIST.md
+  說明：部署、安全與驗證文件。
+  異動：改為 Anonymous Auth 設定流程，要求撤銷舊 Email/Password 帳號、
+        產生全新 32 碼以上 key，並說明資料隔離限制與搬移需求。
+
+--------------------------------------------------------------------------------
+
+【未修改項目】
+  Firestore Security Rules
+  說明：仍維持 request.auth != null；依需求允許匿名登入者存取其知道的家庭路徑。
+        此規則不綁定匿名 uid，資料隔離依賴 familyId 足夠隨機且不公開。
+
+  舊 family/default 資料
+  說明：未自動搬移或刪除，避免在未知新 key 的情況下造成資料遺失。啟用新 key 後，
+        需由 Firebase Console 手動搬移資料並刪除容易猜到的舊路徑。
+
+  Firebase Authentication Provider
+  說明：目前操作環境沒有 Firebase Console 登入權限，無法代為啟用 Anonymous 或撤銷
+        舊帳號；正式站在完成此設定前會安全維持「唯讀模式（雲端連線失敗）」。
+
+--------------------------------------------------------------------------------
+
+【測試建議】
+  1. 無 key 開啟網站：確認唯讀，且不請求 firebase-config.js。
+  2. 使用少於 32 碼或含非法字元的 key：確認唯讀且不登入。
+  3. 啟用 Anonymous 後使用全新 32 碼以上 key：確認可新增與查看成員、行程。
+  4. 使用另一組合法 key：確認看到獨立的空白家庭資料。
+  5. 確認正式站 js/access-config.js 回傳 404，程式碼中不存在帳密。
+  6. 立即撤銷舊 Email/Password 帳號並停用不再使用的 Email/Password Provider。
+  7. 搬移 family/default 資料後刪除舊路徑，避免低強度路徑被猜測。
+
+================================================================================
