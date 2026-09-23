@@ -13,7 +13,7 @@ import {
 import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, validateInitial, escapeHtml } from "./members.js";
 import * as cloud from "./cloud-sync.js";
 import { resolveFamilyId } from "./access.js";
-import { addToDeviceCalendar } from "./ics-export.js";
+import { openCalendarExport } from "./calendar-export.js";
 
 const state = {
   today: new Date(),
@@ -258,20 +258,18 @@ function openDayEventsModal(dateKey) {
       </div>
       <div class="event-actions">
         <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
-        <button class="btn btn-link" data-action="calendar-setup">iPhone 首次設定</button>
         <button class="btn btn-secondary" data-action="edit">編輯</button>
         <button class="btn btn-danger" data-action="delete">刪除</button>
       </div>
-      <p class="calendar-setup-hint">iPhone 尚未設定捷徑時，請先點「iPhone 首次設定」。</p>
     `;
     li.querySelector('[data-action="detail"]')?.addEventListener("click", () => openEventDetail(event, dateKey));
     li.querySelector('.event-summary').addEventListener("click", (e) => {
       if (e.target.dataset.action !== "detail") openEventDetail(event, dateKey);
     });
-    li.querySelector('[data-action="calendar"]').addEventListener("click", () => {
-      addToDeviceCalendar(withMemberNames(event), dateKey);
+    const calendarButton = li.querySelector('[data-action="calendar"]');
+    calendarButton.addEventListener("click", () => {
+      exportEventToCalendar(event, dateKey, calendarButton);
     });
-    li.querySelector('[data-action="calendar-setup"]').addEventListener("click", openCalendarSetup);
     li.querySelector('[data-action="edit"]').addEventListener("click", () => openEventForm({ event, dateKey }));
     li.querySelector('[data-action="delete"]').addEventListener("click", () => confirmDeleteEvent(event, dateKey));
     list.appendChild(li);
@@ -297,20 +295,30 @@ function openEventDetail(event, occurrenceDateKey) {
     <p><strong>重複規則：</strong>${recurrenceLabel(event)}</p>
     <p class="detail-content"><strong>內容：</strong>${escapeHtml(event.title)}</p>
     <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
-    <button class="btn btn-link" data-action="calendar-setup">iPhone 首次設定</button>
-    <p class="calendar-setup-hint">iPhone 尚未設定捷徑時，請先點「iPhone 首次設定」。</p>
   `;
-  el("event-detail-body")
-    .querySelector('[data-action="calendar"]')
-    .addEventListener("click", () => addToDeviceCalendar(withMemberNames(event), occurrenceDateKey));
-  el("event-detail-body")
-    .querySelector('[data-action="calendar-setup"]')
-    .addEventListener("click", openCalendarSetup);
+  const calendarButton = el("event-detail-body").querySelector('[data-action="calendar"]');
+  calendarButton.addEventListener("click", () => {
+    exportEventToCalendar(event, occurrenceDateKey, calendarButton);
+  });
   openModal("modal-event-detail");
 }
 
-function openCalendarSetup() {
-  openModal("modal-calendar-setup");
+function exportEventToCalendar(event, occurrenceDateKey, button) {
+  if (!requireLogin() || button.disabled) return;
+  openCalendarExport({
+    event: withMemberNames(event),
+    occurrenceDateKey,
+    familyId: cloud.getFamilyId(),
+    uploader: cloud.uploadCalendarFile,
+    setLoading: (loading) => {
+      button.disabled = loading;
+      button.textContent = loading ? "正在準備…" : "加入手機行事曆";
+    },
+    onError: (error) => {
+      console.error("Calendar export failed", error);
+      showToast("行事曆檔案產生失敗，請稍後再試");
+    },
+  }).catch(() => {});
 }
 
 function recurrenceLabel(event) {
