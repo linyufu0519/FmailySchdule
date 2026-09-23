@@ -1,8 +1,6 @@
 # Firebase 實際設定（含 API Key 等），由 js/firebase-config.example.js 複製而來
 js/firebase-config.js
 
-# 隱藏連結存取密鑰與共用帳密，由 js/access-config.example.js 複製而來
-js/access-config.js
 
 # 常見編輯器/系統暫存檔
 .DS_Store
