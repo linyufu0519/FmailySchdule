@@ -1,5 +1,5 @@
 // js/app.js
-// 主流程：月曆渲染、Modal 控制、表單互動、搜尋、登入串接。
+// 主流程：月曆渲染、Modal 控制、表單互動、搜尋、匿名登入串接。
 import { initTheme } from "./theme.js";
 import { buildMonthGrid, formatYearMonth, toDateKey, loadHolidays, getHolidayName } from "./calendar.js";
 import {
@@ -12,7 +12,7 @@ import {
 } from "./events.js";
 import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, validateInitial, escapeHtml } from "./members.js";
 import * as cloud from "./cloud-sync.js";
-import { resolveAutoSignIn } from "./access.js";
+import { resolveFamilyId } from "./access.js";
 
 const state = {
   today: new Date(),
@@ -92,15 +92,22 @@ function onEventsChanged(events) {
   renderCalendar();
 }
 
-// ---------- Firebase / 隱藏連結自動登入 ----------
+// ---------- Firebase / 家庭連結匿名登入 ----------
 async function bootCloud() {
+  const familyId = resolveFamilyId(window.location.search);
+  if (!familyId) {
+    el("auth-status").textContent = "唯讀模式（連結缺少或無效）";
+    return;
+  }
+
   const { enabled } = await cloud.initCloud();
   state.cloudEnabled = enabled;
   if (!enabled) {
     el("auth-status").textContent = "離線模式，尚未設定雲端同步（見 FIREBASE_SETUP.md）";
     return;
   }
-  el("auth-status").textContent = "雲端同步已啟用，唯讀模式（無存取權限）";
+  cloud.setFamilyId(familyId);
+  el("auth-status").textContent = "正在連線...";
   cloud.subscribeAuthState((user) => {
     state.currentUser = user;
     updateAuthUI();
@@ -116,14 +123,10 @@ async function bootCloud() {
       renderCalendar();
     }
   });
-  // 網址帶對 ?key= 才嘗試靜默登入；沒帶或帶錯一律維持唯讀，不嘗試登入也不報錯
-  const credentials = await resolveAutoSignIn(window.location.search);
-  if (credentials) {
-    try {
-      await cloud.signInWithEmail(credentials.email, credentials.password);
-    } catch (error) {
-      // 靜默失敗，維持唯讀狀態，不對使用者顯示任何錯誤
-    }
+  try {
+    await cloud.signInAnonymously();
+  } catch (error) {
+    el("auth-status").textContent = "唯讀模式（雲端連線失敗）";
   }
 }
 bootCloud();
@@ -131,7 +134,7 @@ bootCloud();
 function updateAuthUI() {
   if (!state.cloudEnabled) return;
   const loggedIn = !!state.currentUser;
-  el("auth-status").textContent = loggedIn ? "已連線（可編輯）" : "唯讀模式（無存取權限）";
+  el("auth-status").textContent = loggedIn ? "已連線（可編輯）" : "正在連線...";
 }
 
 function requireLogin() {
@@ -140,7 +143,7 @@ function requireLogin() {
     return false;
   }
   if (!state.currentUser) {
-    showToast("目前為唯讀模式，請使用家人分享的專屬連結才能新增/編輯資料");
+    showToast("目前為唯讀模式，請使用有效的家庭專屬連結");
     return false;
   }
   return true;

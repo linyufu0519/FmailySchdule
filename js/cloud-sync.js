@@ -16,16 +16,13 @@ const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/fire
 const FIREBASE_AUTH_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-auth.js`;
 const FIREBASE_FIRESTORE_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-firestore.js`;
 
-// 全家共用單一家庭資料，先寫死一個 familyId；若未來要支援多家庭，
-// 可以改為登入後從使用者 profile 讀取，其餘程式碼不需變動。
-export const FAMILY_ID = "default";
-
 let cachedConfig; // undefined = 尚未嘗試讀取；null = 讀取失敗或不存在
 let app = null;
 let auth = null;
 let db = null;
 let authModule = null;
 let firestoreModule = null;
+let currentFamilyId = null;
 
 async function loadConfig() {
   if (cachedConfig !== undefined) return cachedConfig;
@@ -82,26 +79,32 @@ export function subscribeAuthState(callback) {
   return authModule.onAuthStateChanged(auth, callback);
 }
 
-export async function signUpWithEmail(email, password) {
-  if (!auth) throw new Error("雲端同步尚未啟用");
-  return authModule.createUserWithEmailAndPassword(auth, email, password);
+export function setFamilyId(familyId) {
+  if (typeof familyId !== "string" || familyId.length === 0) {
+    throw new Error("家庭識別碼不可為空");
+  }
+  currentFamilyId = familyId;
 }
 
-export async function signInWithEmail(email, password) {
-  if (!auth) throw new Error("雲端同步尚未啟用");
-  return authModule.signInWithEmailAndPassword(auth, email, password);
+export function getFamilyId() {
+  return currentFamilyId;
 }
 
-export async function signOutCloud() {
-  if (!auth) return;
-  return authModule.signOut(auth);
+export async function signInAnonymously() {
+  if (!auth) throw new Error("雲端同步尚未啟用");
+  return authModule.signInAnonymously(auth);
+}
+
+function requireFamilyId() {
+  if (!currentFamilyId) throw new Error("尚未設定家庭識別碼");
+  return currentFamilyId;
 }
 
 function membersCollection() {
-  return firestoreModule.collection(db, "family", FAMILY_ID, "members");
+  return firestoreModule.collection(db, "family", requireFamilyId(), "members");
 }
 function eventsCollection() {
-  return firestoreModule.collection(db, "family", FAMILY_ID, "events");
+  return firestoreModule.collection(db, "family", requireFamilyId(), "events");
 }
 
 /** 監聽成員清單即時變化，callback 收到最新的成員陣列（含文件 id）。 */
@@ -129,10 +132,16 @@ export async function addMember(data) {
   return ref.id;
 }
 export async function updateMember(id, data) {
-  await firestoreModule.setDoc(firestoreModule.doc(db, "family", FAMILY_ID, "members", id), data, { merge: true });
+  await firestoreModule.setDoc(
+    firestoreModule.doc(db, "family", requireFamilyId(), "members", id),
+    data,
+    { merge: true }
+  );
 }
 export async function deleteMember(id) {
-  await firestoreModule.deleteDoc(firestoreModule.doc(db, "family", FAMILY_ID, "members", id));
+  await firestoreModule.deleteDoc(
+    firestoreModule.doc(db, "family", requireFamilyId(), "members", id)
+  );
 }
 
 export async function addEvent(data) {
@@ -140,8 +149,14 @@ export async function addEvent(data) {
   return ref.id;
 }
 export async function updateEvent(id, data) {
-  await firestoreModule.setDoc(firestoreModule.doc(db, "family", FAMILY_ID, "events", id), data, { merge: true });
+  await firestoreModule.setDoc(
+    firestoreModule.doc(db, "family", requireFamilyId(), "events", id),
+    data,
+    { merge: true }
+  );
 }
 export async function deleteEvent(id) {
-  await firestoreModule.deleteDoc(firestoreModule.doc(db, "family", FAMILY_ID, "events", id));
+  await firestoreModule.deleteDoc(
+    firestoreModule.doc(db, "family", requireFamilyId(), "events", id)
+  );
 }
