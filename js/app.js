@@ -13,7 +13,7 @@ import {
 import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, validateInitial, escapeHtml } from "./members.js";
 import * as cloud from "./cloud-sync.js";
 import { resolveFamilyId } from "./access.js";
-import { downloadIcs } from "./ics-export.js";
+import { addToDeviceCalendar } from "./ics-export.js";
 
 const state = {
   today: new Date(),
@@ -258,17 +258,20 @@ function openDayEventsModal(dateKey) {
       </div>
       <div class="event-actions">
         <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
+        <button class="btn btn-link" data-action="calendar-setup">iPhone 首次設定</button>
         <button class="btn btn-secondary" data-action="edit">編輯</button>
         <button class="btn btn-danger" data-action="delete">刪除</button>
       </div>
+      <p class="calendar-setup-hint">iPhone 尚未設定捷徑時，請先點「iPhone 首次設定」。</p>
     `;
     li.querySelector('[data-action="detail"]')?.addEventListener("click", () => openEventDetail(event, dateKey));
     li.querySelector('.event-summary').addEventListener("click", (e) => {
       if (e.target.dataset.action !== "detail") openEventDetail(event, dateKey);
     });
     li.querySelector('[data-action="calendar"]').addEventListener("click", () => {
-      downloadIcs(withMemberNames(event), dateKey);
+      addToDeviceCalendar(withMemberNames(event), dateKey);
     });
+    li.querySelector('[data-action="calendar-setup"]').addEventListener("click", openCalendarSetup);
     li.querySelector('[data-action="edit"]').addEventListener("click", () => openEventForm({ event, dateKey }));
     li.querySelector('[data-action="delete"]').addEventListener("click", () => confirmDeleteEvent(event, dateKey));
     list.appendChild(li);
@@ -294,11 +297,20 @@ function openEventDetail(event, occurrenceDateKey) {
     <p><strong>重複規則：</strong>${recurrenceLabel(event)}</p>
     <p class="detail-content"><strong>內容：</strong>${escapeHtml(event.title)}</p>
     <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
+    <button class="btn btn-link" data-action="calendar-setup">iPhone 首次設定</button>
+    <p class="calendar-setup-hint">iPhone 尚未設定捷徑時，請先點「iPhone 首次設定」。</p>
   `;
   el("event-detail-body")
     .querySelector('[data-action="calendar"]')
-    .addEventListener("click", () => downloadIcs(withMemberNames(event), occurrenceDateKey));
+    .addEventListener("click", () => addToDeviceCalendar(withMemberNames(event), occurrenceDateKey));
+  el("event-detail-body")
+    .querySelector('[data-action="calendar-setup"]')
+    .addEventListener("click", openCalendarSetup);
   openModal("modal-event-detail");
+}
+
+function openCalendarSetup() {
+  openModal("modal-calendar-setup");
 }
 
 function recurrenceLabel(event) {
