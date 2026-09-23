@@ -15,7 +15,9 @@
   函式／區塊：buildIcsContent、buildIcsFilename、downloadIcs
   說明：產生 iCalendar 內容、安全檔名與瀏覽器下載。
   異動：新增 VCALENDAR／VEVENT 必要欄位、floating local time、成員說明、
-        ICS 特殊字元跳脫、跨日結束日期、單次 UID 與 Blob anchor 下載。
+        ICS 特殊字元跳脫、跨日結束日期與單次 UID。另修正 iOS Safari 不可靠的
+        Blob download 行為：iOS 改用 data:text/calendar URI 直接導向，其他平台
+        維持 Blob anchor 下載。
 
   修改前：
     無此功能。
@@ -45,7 +47,8 @@
   程式位置四：tests/ics-export.test.js
   說明：ICS 純函式與下載行為測試。
   異動：涵蓋必要標頭、本地時間、重複單次、跨日、特殊字元跳脫、安全檔名、
-        Blob MIME、anchor click 與 Object URL 回收。
+        iOS UA 判斷、data URI encode/decode、iOS 直接導向，以及非 iOS Blob MIME、
+        anchor click 與 Object URL 回收。
 
 --------------------------------------------------------------------------------
 

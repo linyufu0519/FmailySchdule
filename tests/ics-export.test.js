@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildIcsContent, buildIcsFilename, downloadIcs } from "../js/ics-export.js";
+import {
+  buildIcsContent,
+  buildIcsDataUri,
+  buildIcsFilename,
+  downloadIcs,
+  shouldUseDataUriDownload,
+} from "../js/ics-export.js";
 
 function makeEvent(overrides = {}) {
   return {
@@ -63,7 +69,73 @@ test("下載檔名過濾危險字元並附加日期", () => {
   assert.equal(filename, "晚餐_聚會_test____2026-09-23.ics");
 });
 
-test("downloadIcs 以 text/calendar Blob 與 download anchor 觸發下載", async () => {
+test("iOS user agent 使用 data URI，其他平台維持 Blob 下載", () => {
+  assert.equal(
+    shouldUseDataUriDownload("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"),
+    true
+  );
+  assert.equal(
+    shouldUseDataUriDownload("Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)"),
+    true
+  );
+  assert.equal(shouldUseDataUriDownload("Mozilla/5.0 (Linux; Android 15) Chrome/120"), false);
+  assert.equal(shouldUseDataUriDownload("Mozilla/5.0 (Macintosh; Intel Mac OS X) Safari/605"), false);
+});
+
+test("ICS data URI 可完整 decode 回原始內容", () => {
+  const ics = buildIcsContent(makeEvent(), "2026-09-23");
+  const uri = buildIcsDataUri(ics);
+  const encodedContent = uri.slice("data:text/calendar;charset=utf-8,".length);
+
+  assert.match(uri, /^data:text\/calendar;charset=utf-8,/);
+  assert.equal(decodeURIComponent(encodedContent), ics);
+});
+
+test("iOS downloadIcs 直接導向 data URI，不建立 Blob 或 download anchor", () => {
+  const originalNavigator = globalThis.navigator;
+  const originalWindow = globalThis.window;
+  const originalDocument = globalThis.document;
+  const originalCreateObjectURL = URL.createObjectURL;
+  let createdAnchor = false;
+  let createdObjectUrl = false;
+
+  try {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" },
+    });
+    globalThis.window = { location: { href: "" } };
+    globalThis.document = {
+      createElement: () => {
+        createdAnchor = true;
+        return {};
+      },
+    };
+    URL.createObjectURL = () => {
+      createdObjectUrl = true;
+      return "blob:unexpected";
+    };
+
+    downloadIcs(makeEvent(), "2026-09-23");
+
+    assert.match(globalThis.window.location.href, /^data:text\/calendar;charset=utf-8,/);
+    const encodedContent = globalThis.window.location.href.split(",", 2)[1];
+    assert.match(decodeURIComponent(encodedContent), /SUMMARY:家庭聚餐/);
+    assert.equal(createdAnchor, false);
+    assert.equal(createdObjectUrl, false);
+  } finally {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: originalNavigator,
+    });
+    globalThis.window = originalWindow;
+    globalThis.document = originalDocument;
+    URL.createObjectURL = originalCreateObjectURL;
+  }
+});
+
+test("非 iOS downloadIcs 以 text/calendar Blob 與 download anchor 觸發下載", async () => {
+  const originalNavigator = globalThis.navigator;
   const originalDocument = globalThis.document;
   const originalCreateObjectURL = URL.createObjectURL;
   const originalRevokeObjectURL = URL.revokeObjectURL;
@@ -73,6 +145,10 @@ test("downloadIcs 以 text/calendar Blob 與 download anchor 觸發下載", asyn
   let revokedUrl;
 
   try {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: { userAgent: "Mozilla/5.0 (Linux; Android 15) Chrome/120" },
+    });
     globalThis.document = {
       createElement: () => ({
         click: () => {
@@ -104,6 +180,10 @@ test("downloadIcs 以 text/calendar Blob 與 download anchor 觸發下載", asyn
     assert.match(await capturedBlob.text(), /SUMMARY:家庭聚餐/);
     assert.equal(revokedUrl, "blob:test-calendar");
   } finally {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: originalNavigator,
+    });
     globalThis.document = originalDocument;
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
