@@ -77,8 +77,22 @@ export function buildIcsFilename(event, occurrenceDateKey) {
   return `${safeTitle}_${occurrenceDateKey}.ics`;
 }
 
+export function shouldUseDataUriDownload(userAgent) {
+  return /iP(hone|ad|od)/.test(userAgent || "");
+}
+
+export function buildIcsDataUri(icsContent) {
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
+}
+
 export function downloadIcs(event, occurrenceDateKey) {
-  const blob = new Blob([buildIcsContent(event, occurrenceDateKey)], {
+  const icsContent = buildIcsContent(event, occurrenceDateKey);
+  if (shouldUseDataUriDownload(navigator.userAgent)) {
+    window.location.href = buildIcsDataUri(icsContent);
+    return;
+  }
+
+  const blob = new Blob([icsContent], {
     type: "text/calendar;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
