@@ -92,12 +92,18 @@
       </div>
       <div class="calendar-setup-guide">
         <p>iPhone 需先建立一次捷徑，之後即可從本網站直接加入行程：</p>
+        <p>捷徑名稱（請完整複製）：<code class="shortcut-name">新增家庭行程</code></p>
         <ol>
-          <li>開啟 iPhone「捷徑」App，新增捷徑，名稱必須是「新增家庭行程」。</li>
-          <li>將捷徑設定為接收「文字」輸入。</li>
-          <li>加入「從輸入取得字典」（Get Dictionary from Input）動作。</li>
-          <li>加入「加入新行程」（Add New Event）動作。</li>
-          <li>標題選字典的 <code>title</code>；開始日期選 <code>startAt</code>；結束日期選 <code>endAt</code>；備註選 <code>notes</code>。</li>
+          <li>開啟 iPhone「捷徑」App，新增捷徑，名稱必須是上方的「新增家庭行程」。</li>
+          <li>將捷徑設定為接收「文字」輸入。這個「捷徑輸入」會由網站自動傳入，不需要手動貼上 JSON。</li>
+          <li>加入「從輸入取得字典」（Get Dictionary from Input）動作，輸入選「捷徑輸入」。</li>
+          <li>接著加入四個「取得字典值」（Get Dictionary Value）動作，依序輸入 key：
+            <code>title</code>、<code>startAt</code>、<code>endAt</code>、<code>notes</code>。
+            將四個輸出分別重新命名為「標題文字」、「開始時間文字」、「結束時間文字」、「備註文字」，方便後續選取魔術變數。</li>
+          <li>在「開始時間文字」後加入「從輸入取得日期」（Get Dates from Input），輸入選「開始時間文字」，輸出命名為「開始日期」。</li>
+          <li>在「結束時間文字」後加入另一個「從輸入取得日期」（Get Dates from Input），輸入選「結束時間文字」，輸出命名為「結束日期」。</li>
+          <li>加入「加入新行程」（Add New Event），欄位明確設定為：
+            標題＝「標題文字」、開始日期＝「開始日期」、結束日期＝「結束日期」、備註＝「備註文字」。</li>
           <li>關閉「執行時顯示」（Show When Run），儲存捷徑。</li>
           <li>回到網站點「加入手機行事曆」。第一次執行若詢問允許開啟捷徑或存取行事曆，請按允許。</li>
         </ol>

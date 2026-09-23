@@ -262,6 +262,7 @@ function openDayEventsModal(dateKey) {
         <button class="btn btn-secondary" data-action="edit">編輯</button>
         <button class="btn btn-danger" data-action="delete">刪除</button>
       </div>
+      <p class="calendar-setup-hint">iPhone 尚未設定捷徑時，請先點「iPhone 首次設定」。</p>
     `;
     li.querySelector('[data-action="detail"]')?.addEventListener("click", () => openEventDetail(event, dateKey));
     li.querySelector('.event-summary').addEventListener("click", (e) => {
@@ -297,6 +298,7 @@ function openEventDetail(event, occurrenceDateKey) {
     <p class="detail-content"><strong>內容：</strong>${escapeHtml(event.title)}</p>
     <button class="btn btn-secondary" data-action="calendar">加入手機行事曆</button>
     <button class="btn btn-link" data-action="calendar-setup">iPhone 首次設定</button>
+    <p class="calendar-setup-hint">iPhone 尚未設定捷徑時，請先點「iPhone 首次設定」。</p>
   `;
   el("event-detail-body")
     .querySelector('[data-action="calendar"]')
