@@ -159,6 +159,29 @@
     </div>
   </div>
 
+  <!-- Modal: LINE 內建瀏覽器提示（無法直接加入行事曆） -->
+  <div id="modal-line-browser-help" class="modal-overlay hidden">
+    <div class="modal-box modal-box-small">
+      <div class="modal-header">
+        <h3>請使用 Safari 加入行事曆</h3>
+        <button class="btn-close" data-close-modal="modal-line-browser-help" aria-label="關閉">✕</button>
+      </div>
+      <ul class="line-help-list">
+        <li>LINE 內建瀏覽器不支援加入 iPhone 行事曆。</li>
+        <li>請點 LINE 右上角「⋯」或分享選單。</li>
+        <li>選擇「使用預設瀏覽器開啟」／「在 Safari 開啟」（不同版本文字可能略有差異）。</li>
+        <li>在 Safari 中重新點「加入手機行事曆」。</li>
+      </ul>
+      <label class="form-label">目前網址</label>
+      <textarea id="line-help-url" class="line-help-url" readonly rows="2"></textarea>
+      <p class="line-help-warning">⚠️ 網址包含家庭專屬密鑰，僅可分享給家人，請勿公開分享。</p>
+      <div class="form-actions">
+        <button type="button" id="btn-copy-line-help-url" class="btn btn-secondary">複製目前網址</button>
+        <button type="button" class="btn btn-primary" data-close-modal="modal-line-browser-help">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <script type="module" src="js/app.js"></script>

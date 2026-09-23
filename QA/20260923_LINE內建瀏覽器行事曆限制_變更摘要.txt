@@ -1,0 +1,82 @@
+================================================================================
+  20260923 旺咪家行事曆 — LINE 內建瀏覽器加入行事曆限制 變更摘要
+  日期：2026-09-23
+================================================================================
+
+【USER 需求】
+  Safari 中的「加入手機行事曆」（Firebase Storage HTTPS ICS 同頁導向）已實測成功，
+  不可改動。但 LINE 內建瀏覽器（WebView）無法把 text/calendar 正確交給 Apple
+  行事曆，因此點擊「加入手機行事曆」時需先偵測是否在 LINE 內建瀏覽器中，若是則
+  不進行任何上傳或導向，改顯示提示 Modal，引導使用者切換到 Safari 操作。
+
+--------------------------------------------------------------------------------
+
+【影響範圍】
+
+  程式位置一：js/browser-detect.js（新增）
+  函式／區塊：isLineInAppBrowser(userAgent)
+  說明：純函式，依 User-Agent 判斷是否為 LINE 內建瀏覽器。
+  異動：以 `/\bLine\//i` 比對常見 LINE UA 標記（iOS／Android 皆含 `Line/版本號`，
+        不分大小寫），對空值、Safari、Chrome、桌面瀏覽器一律回傳 false。
+
+  修改前：
+    無此判斷邏輯。
+
+  修改後：
+    export function isLineInAppBrowser(userAgent) {
+      return /\bLine\//i.test(String(userAgent || ""));
+    }
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置二：js/app.js
+  函式／區塊：exportEventToCalendar、openLineBrowserHelp、
+             btn-copy-line-help-url click handler
+  說明：在「加入手機行事曆」click handler 最前面攔截 LINE 內建瀏覽器。
+  異動：呼叫 openCalendarExport 前先以 isLineInAppBrowser(navigator.userAgent)
+        判斷；若為 LINE，直接開啟 modal-line-browser-help 並帶入目前完整網址
+        （含 ?key=），完全不呼叫 buildIcsContent／uploader／導向邏輯。新增
+        「複製目前網址」按鈕，優先用 navigator.clipboard.writeText()，失敗時
+        改為 focus + select 文字框並顯示提示 toast。
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置三：index.html、css/style.css
+  說明：新增 LINE 提示 Modal 與樣式。
+  異動：新增 #modal-line-browser-help，內容包含操作步驟清單、唯讀網址文字框、
+        安全提醒（網址含家庭密鑰，僅可分享給家人）、「複製目前網址」與「關閉」
+        按鈕；css 新增 .line-help-list / .line-help-url / .line-help-warning
+        樣式，套用既有 modal-box-small 版型，維持 mobile-first。
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置四：tests/browser-detect.test.js（新增）
+  說明：isLineInAppBrowser 純函式測試。
+  異動：涵蓋 LINE iOS UA、LINE Android UA、大寫 LINE/ 標記均為 true；
+        Safari iOS、Chrome Android、桌面 Chrome 均為 false；空值/undefined/null
+        亦回傳 false。
+
+--------------------------------------------------------------------------------
+
+【未修改項目】
+  Safari／非 LINE 瀏覽器的加入行事曆流程
+  說明：openCalendarExport 與 Storage 上傳、同頁 location.assign 導向邏輯完全
+        未變動，已實測成功的流程維持不變。
+
+  Firestore 資料模型與 Storage Rules
+  說明：本次僅為前端瀏覽器判斷與 UI 提示，未涉及資料結構或後端規則調整。
+
+--------------------------------------------------------------------------------
+
+【測試建議】
+  1. 使用真實 LINE App 開啟含 ?key= 的完整連結，在 LINE 內建瀏覽器點擊
+     「加入手機行事曆」，確認不會有任何網路請求（Storage 上傳）或頁面導向。
+  2. 確認顯示「請使用 Safari 加入行事曆」Modal，步驟說明與安全提醒文字正確。
+  3. 點擊「複製目前網址」，貼到備忘錄確認網址完整（含 ?key=）。
+  4. 模擬 clipboard API 不可用（例如非 HTTPS 或權限被拒），確認改為選取文字框
+     內容並顯示「請手動長按選取上方網址並複製」提示。
+  5. 依提示用 LINE 右上角「⋯」開啟「使用預設瀏覽器開啟」，在 Safari 重新點擊
+     「加入手機行事曆」，確認可正常上傳並同頁導向 HTTPS ICS。
+  6. Safari／Chrome 等非 LINE 瀏覽器維持原本流程不受影響。
+
+================================================================================

@@ -15,6 +15,10 @@
   Firebase Storage 後於**目前分頁**導向真實 HTTPS 下載網址（不開新分頁）；重複行程只匯出當下
   查看的那一次。完成或取消匯入後可用瀏覽器返回鍵回到家庭行事曆。此方式比 iOS Safari 的
   Blob／data URI 更可靠，但最終開啟或加入行事曆的介面仍取決於 iOS 版本。
+  - **LINE 內建瀏覽器限制**：LINE 的 in-app 瀏覽器（WebView）無法把 `.ics` 正確交給系統行事曆，
+    點擊「加入手機行事曆」時會偵測 User-Agent，若判定為 LINE 內建瀏覽器則不會上傳或導向，
+    改顯示「請使用 Safari 加入行事曆」提示，並提供「複製目前網址」按鈕，方便使用者以 LINE
+    右上角選單「使用預設瀏覽器開啟」後在 Safari 重新操作。
 - **新增／編輯行程**：
   - 相關家庭成員複選（checkbox，僅顯示各自簡稱與顏色）
   - 開始／結束時間（同一天內；選好開始時間後，若尚未手動改過結束時間，會自動帶入
@@ -77,6 +81,7 @@ js/holidays.json              台灣國定假日資料（2026 年度）
 js/events.js                  行程資料結構、重複規則展開、衝突偵測（純函式）
 js/ics-export.js              單次行程 iCalendar 內容產生與下載
 js/calendar-export.js         Storage 匯出視窗、上傳與導向流程
+js/browser-detect.js          LINE 內建瀏覽器偵測（純函式）
 js/members.js                 成員顯示輔助函式
 js/firebase-config-status.js  Firebase 設定完整性判斷（純函式）
 js/firebase-config.example.js Firebase 設定範本（可 commit）
