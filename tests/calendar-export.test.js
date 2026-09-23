@@ -12,67 +12,37 @@ function makeEvent() {
   };
 }
 
-function makePreviewWindow() {
+function makeWindowObject() {
   return {
-    document: { title: "", body: { textContent: "" } },
-    location: { replaced: "", replace(url) { this.replaced = url; } },
-    closed: false,
-    close() { this.closed = true; },
+    location: { assigned: "", assign(url) { this.assigned = url; } },
   };
 }
 
-test("同步開啟 placeholder，再開始非同步上傳並成功導向", async () => {
-  const order = [];
-  const preview = makePreviewWindow();
-  const windowObject = {
-    open() {
-      order.push("open");
-      return preview;
-    },
-    location: { href: "" },
-  };
+test("上傳成功後於目前頁面導向下載網址，並正確恢復 loading", async () => {
+  const windowObject = makeWindowObject();
+  const loadingStates = [];
   const uploader = async (familyId, fileName, content) => {
-    order.push("upload");
     assert.equal(familyId, "family-id");
     assert.equal(fileName, "event.ics");
     assert.match(content, /SUMMARY:家庭聚餐/);
     return "https://storage.example/event.ics";
   };
 
-  const promise = openCalendarExport({
+  await openCalendarExport({
     event: makeEvent(),
     occurrenceDateKey: "2026-09-30",
     familyId: "family-id",
     uploader,
     windowObject,
+    setLoading: (loading) => loadingStates.push(loading),
   });
 
-  assert.deepEqual(order, ["open"]);
-  assert.equal(preview.document.body.textContent, "正在準備行事曆…");
-  await promise;
-  assert.deepEqual(order, ["open", "upload"]);
-  assert.equal(preview.location.replaced, "https://storage.example/event.ics");
+  assert.equal(windowObject.location.assigned, "https://storage.example/event.ics");
+  assert.deepEqual(loadingStates, [true, false]);
 });
 
-test("popup 被阻擋時完成上傳後改導向目前頁面", async () => {
-  const windowObject = {
-    open: () => null,
-    location: { href: "" },
-  };
-
-  await openCalendarExport({
-    event: makeEvent(),
-    occurrenceDateKey: "2026-09-23",
-    familyId: "family-id",
-    uploader: async () => "https://storage.example/fallback.ics",
-    windowObject,
-  });
-
-  assert.equal(windowObject.location.href, "https://storage.example/fallback.ics");
-});
-
-test("上傳失敗時關閉 placeholder、回報錯誤並解除 loading", async () => {
-  const preview = makePreviewWindow();
+test("上傳失敗時不導向、回報錯誤並解除 loading", async () => {
+  const windowObject = makeWindowObject();
   const error = new Error("upload failed");
   const errors = [];
   const loadingStates = [];
@@ -83,14 +53,39 @@ test("上傳失敗時關閉 placeholder、回報錯誤並解除 loading", async 
       occurrenceDateKey: "2026-09-23",
       familyId: "family-id",
       uploader: async () => { throw error; },
-      windowObject: { open: () => preview, location: { href: "" } },
+      windowObject,
       setLoading: (loading) => loadingStates.push(loading),
       onError: (received) => errors.push(received),
     }),
     /upload failed/
   );
 
-  assert.equal(preview.closed, true);
+  assert.equal(windowObject.location.assigned, "");
   assert.deepEqual(errors, [error]);
+  assert.deepEqual(loadingStates, [true, false]);
+});
+
+test("點擊後立即設定 loading，不等待上傳完成", async () => {
+  const windowObject = makeWindowObject();
+  const loadingStates = [];
+  let resolveUpload;
+  const uploader = () => new Promise((resolve) => {
+    resolveUpload = resolve;
+  });
+
+  const promise = openCalendarExport({
+    event: makeEvent(),
+    occurrenceDateKey: "2026-09-23",
+    familyId: "family-id",
+    uploader,
+    windowObject,
+    setLoading: (loading) => loadingStates.push(loading),
+  });
+
+  assert.deepEqual(loadingStates, [true]);
+  // uploader() 是在 microtask 中被呼叫的，先讓佇列跑一輪讓 resolveUpload 被賦值
+  await Promise.resolve();
+  resolveUpload("https://storage.example/event.ics");
+  await promise;
   assert.deepEqual(loadingStates, [true, false]);
 });
