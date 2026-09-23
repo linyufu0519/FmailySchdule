@@ -12,12 +12,13 @@
 【影響範圍】
 
   程式位置一：js/ics-export.js
-  函式／區塊：buildIcsContent、buildIcsFilename、downloadIcs
+  函式／區塊：buildIcsContent、buildShortcutPayload、buildShortcutUrl、
+              addToDeviceCalendar
   說明：產生 iCalendar 內容、安全檔名與瀏覽器下載。
   異動：新增 VCALENDAR／VEVENT 必要欄位、floating local time、成員說明、
-        ICS 特殊字元跳脫、跨日結束日期與單次 UID。另修正 iOS Safari 不可靠的
-        Blob download 行為：iOS 改用 data:text/calendar URI 直接導向，其他平台
-        維持 Blob anchor 下載。
+        ICS 特殊字元跳脫、跨日結束日期與單次 UID。iOS Safari 對 Blob 與 data URI
+        都無法可靠開啟行事曆，前兩版只更換下載 URI 類型仍未跳脫平台限制；最終改用
+        Shortcuts URL Scheme 呼叫原生「新增家庭行程」捷徑。其他平台維持 Blob 下載。
 
   修改前：
     無此功能。
@@ -25,7 +26,9 @@
   修改後：
     export function buildIcsContent(event, occurrenceDateKey)
     export function buildIcsFilename(event, occurrenceDateKey)
-    export function downloadIcs(event, occurrenceDateKey)
+    export function buildShortcutPayload(event, occurrenceDateKey)
+    export function buildShortcutUrl(event, occurrenceDateKey, shortcutName)
+    export function addToDeviceCalendar(event, occurrenceDateKey)
 
   ─────────────────────────────────────────────────────────────────────────────
 
@@ -47,8 +50,15 @@
   程式位置四：tests/ics-export.test.js
   說明：ICS 純函式與下載行為測試。
   異動：涵蓋必要標頭、本地時間、重複單次、跨日、特殊字元跳脫、安全檔名、
-        iOS UA 判斷、data URI encode/decode、iOS 直接導向，以及非 iOS Blob MIME、
-        anchor click 與 Object URL 回收。
+        iOS UA 判斷、捷徑 payload 日期與成員、URL scheme/名稱/JSON 編碼、iOS 原生
+        導向，以及非 iOS Blob MIME、anchor click 與 Object URL 回收。
+
+  ─────────────────────────────────────────────────────────────────────────────
+
+  程式位置五：index.html、css/style.css
+  說明：iPhone 首次設定教學。
+  異動：新增設定入口與 Modal，說明建立「新增家庭行程」捷徑、解析字典及對應
+        title/startAt/endAt/notes 到「加入新行程」動作。
 
 --------------------------------------------------------------------------------
 
@@ -66,7 +76,8 @@
   2. 從詳細 Modal 下載相同行程，確認內容一致。
   3. 點選重複行程第二次 occurrence，確認 ICS 日期為當次日期且沒有 RRULE。
   4. 使用含逗號、分號、反斜線與換行的標題，確認匯入後文字完整。
-  5. 使用 iPhone Safari 點擊按鈕，確認可開啟行事曆預覽並新增。
+  5. 依首次設定 Modal 建立「新增家庭行程」捷徑，再從 iPhone Safari 點擊按鈕，
+     確認捷徑立即執行並新增正確行程。
   6. 在窄螢幕確認三個操作按鈕可換行且不超出 Modal。
 
 ================================================================================

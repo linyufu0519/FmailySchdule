@@ -83,6 +83,29 @@
     </div>
   </div>
 
+  <!-- Modal: iPhone 捷徑首次設定 -->
+  <div id="modal-calendar-setup" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>iPhone 首次設定</h3>
+        <button class="btn-close" data-close-modal="modal-calendar-setup" aria-label="關閉">✕</button>
+      </div>
+      <div class="calendar-setup-guide">
+        <p>iPhone 需先建立一次捷徑，之後即可從本網站直接加入行程：</p>
+        <ol>
+          <li>開啟 iPhone「捷徑」App，新增捷徑，名稱必須是「新增家庭行程」。</li>
+          <li>將捷徑設定為接收「文字」輸入。</li>
+          <li>加入「從輸入取得字典」（Get Dictionary from Input）動作。</li>
+          <li>加入「加入新行程」（Add New Event）動作。</li>
+          <li>標題選字典的 <code>title</code>；開始日期選 <code>startAt</code>；結束日期選 <code>endAt</code>；備註選 <code>notes</code>。</li>
+          <li>關閉「執行時顯示」（Show When Run），儲存捷徑。</li>
+          <li>回到網站點「加入手機行事曆」。第一次執行若詢問允許開啟捷徑或存取行事曆，請按允許。</li>
+        </ol>
+        <p class="text-muted">不同 iOS 版本的動作名稱可能略有差異，可依括號內英文名稱搜尋。</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: 新增/編輯行程表單 -->
   <div id="modal-event-form" class="modal-overlay hidden">
     <div class="modal-box">

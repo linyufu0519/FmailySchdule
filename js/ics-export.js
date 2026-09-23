@@ -77,21 +77,39 @@ export function buildIcsFilename(event, occurrenceDateKey) {
   return `${safeTitle}_${occurrenceDateKey}.ics`;
 }
 
-export function shouldUseDataUriDownload(userAgent) {
+export function isIosDevice(userAgent) {
   return /iP(hone|ad|od)/.test(userAgent || "");
 }
 
-export function buildIcsDataUri(icsContent) {
-  return `data:text/calendar;charset=utf-8,${encodeURIComponent(icsContent)}`;
+export function buildShortcutPayload(event, occurrenceDateKey) {
+  const originalStartDate = event.startAt.slice(0, 10);
+  const originalEndDate = event.endAt.slice(0, 10);
+  const occurrenceEndDate = addDays(
+    occurrenceDateKey,
+    Math.max(0, daysBetween(originalStartDate, originalEndDate))
+  );
+  const memberNames = Array.isArray(event.memberNames) ? event.memberNames.filter(Boolean) : [];
+
+  return {
+    title: event.title,
+    startAt: `${occurrenceDateKey}T${event.startAt.slice(11, 16)}:00`,
+    endAt: `${occurrenceEndDate}T${event.endAt.slice(11, 16)}:00`,
+    notes: memberNames.length ? `參與成員：${memberNames.join("、")}` : "",
+  };
 }
 
-export function downloadIcs(event, occurrenceDateKey) {
-  const icsContent = buildIcsContent(event, occurrenceDateKey);
-  if (shouldUseDataUriDownload(navigator.userAgent)) {
-    window.location.href = buildIcsDataUri(icsContent);
+export function buildShortcutUrl(event, occurrenceDateKey, shortcutName = "新增家庭行程") {
+  const payload = JSON.stringify(buildShortcutPayload(event, occurrenceDateKey));
+  return `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}&input=text&text=${encodeURIComponent(payload)}`;
+}
+
+export function addToDeviceCalendar(event, occurrenceDateKey) {
+  if (isIosDevice(navigator.userAgent)) {
+    window.location.href = buildShortcutUrl(event, occurrenceDateKey);
     return;
   }
 
+  const icsContent = buildIcsContent(event, occurrenceDateKey);
   const blob = new Blob([icsContent], {
     type: "text/calendar;charset=utf-8",
   });
