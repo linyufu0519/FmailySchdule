@@ -11,37 +11,9 @@
   `+N` 省略顯示）。
 - **當日行程列表（Modal）**：依開始時間排序，每筆顯示固定長度摘要，超過長度顯示
   「...詳細」可展開完整內容（含成員、時間）；可從此處新增、編輯、刪除行程。
-- **加入手機行事曆**：當日列表與行程詳情皆可將單次行程下載為標準 `.ics`；重複行程只匯出
-  當下查看的那一次。iOS 使用「捷徑」原生整合；其他瀏覽器維持 Blob `.ics` 檔案下載。
-
-### iPhone 首次設定
-
-iOS Safari 對網頁產生的 Blob 或 data URI 行事曆檔案支援不可靠，因此 iPhone 改用
-`shortcuts://` URL Scheme 呼叫捷徑。首次使用前請設定：
-
-1. 開啟 iPhone「捷徑」App，新增捷徑，名稱必須完整命名為 **新增家庭行程**。
-2. 將捷徑設定為接收「文字」輸入。「捷徑輸入」會由網站的 `shortcuts://` URL 自動傳入，
-   使用者不需要手動複製或貼上 JSON。
-3. 加入「從輸入取得字典」（Get Dictionary from Input），輸入選「捷徑輸入」。
-4. 加入四個「取得字典值」（Get Dictionary Value），key 分別填入：
-   - `title`：輸出重新命名為「標題文字」
-   - `startAt`：輸出重新命名為「開始時間文字」
-   - `endAt`：輸出重新命名為「結束時間文字」
-   - `notes`：輸出重新命名為「備註文字」
-5. 在「開始時間文字」後加入「從輸入取得日期」（Get Dates from Input），輸入選
-   「開始時間文字」，輸出重新命名為「開始日期」。
-6. 在「結束時間文字」後再加入一個「從輸入取得日期」，輸入選「結束時間文字」，
-   輸出重新命名為「結束日期」。
-7. 加入「加入新行程」（Add New Event），使用魔術變數明確對應：
-   - 標題＝「標題文字」
-   - 開始日期＝「開始日期」
-   - 結束日期＝「結束日期」
-   - 備註＝「備註文字」
-8. 關閉「執行時顯示」（Show When Run）並儲存。
-9. 回到網站點「加入手機行事曆」。第一次執行若詢問允許開啟捷徑或存取行事曆，請允許。
-
-網站也在每筆行程旁提供「iPhone 首次設定」入口。不同 iOS 版本的繁中動作名稱可能略有差異，
-可用括號內英文名稱搜尋。
+- **加入手機行事曆**：當日列表與行程詳情可將目前單次行程產生為標準 `.ics`，上傳至
+  Firebase Storage 後開啟真實 HTTPS 下載網址；重複行程只匯出當下查看的那一次。此方式比
+  iOS Safari 的 Blob／data URI 更可靠，但最終開啟或加入行事曆的介面仍取決於 iOS 版本。
 - **新增／編輯行程**：
   - 相關家庭成員複選（checkbox，僅顯示各自簡稱與顏色）
   - 開始／結束時間（同一天內；選好開始時間後，若尚未手動改過結束時間，會自動帶入
@@ -81,7 +53,7 @@ python -m http.server 8080
 
 1. 建立 Firebase 專案、新增 Web 應用程式取得 `firebaseConfig`
 2. 啟用 Anonymous（匿名）登入
-3. 建立 Firestore Database 並設定 Security Rules
+3. 建立 Firestore Database 與 Storage，並設定 Security Rules
 4. 複製 `js/firebase-config.example.js` 為 `js/firebase-config.js` 並填入設定值
 5. 產生至少 32 碼的隨機家庭 key，僅透過完整網址私下分享，不存入任何程式檔
 6. 部署到 GitHub Pages；正式站台只需發布可公開的 `firebase-config.js`
@@ -103,12 +75,13 @@ js/calendar.js                月曆計算、假日查詢（純函式）
 js/holidays.json              台灣國定假日資料（2026 年度）
 js/events.js                  行程資料結構、重複規則展開、衝突偵測（純函式）
 js/ics-export.js              單次行程 iCalendar 內容產生與下載
+js/calendar-export.js         Storage 匯出視窗、上傳與導向流程
 js/members.js                 成員顯示輔助函式
 js/firebase-config-status.js  Firebase 設定完整性判斷（純函式）
 js/firebase-config.example.js Firebase 設定範本（可 commit）
 js/firebase-config.js         實際 Firebase 設定（.gitignore 排除，需自行建立）
 js/access.js                  URL key 驗證與 familyId 解析（純函式）
-js/cloud-sync.js              Firebase Auth + Firestore 封裝
+js/cloud-sync.js              Firebase Auth + Firestore + Storage 封裝
 js/theme.js                   深色模式切換
 FIREBASE_SETUP.md             Firebase 設定教學
 tests/                        純函式測試（Node 內建 test runner）+ 手動測試檢查清單

@@ -90,7 +90,50 @@ git push origin main
 
 **不需要也不應建立 `js/access-config.js`。**
 
-## 步驟五：建立與分享家庭網址
+## 步驟五：設定 Storage 行事曆匯出
+
+「加入手機行事曆」會把單次行程暫存為 `.ics` 到 Firebase Storage，再用
+`getDownloadURL()` 取得真實 HTTPS 網址。Storage Rules 應限制為：
+
+```
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /calendar-exports/{familyId}/{fileName} {
+      allow write: if request.auth != null
+                   && familyId.matches('^[A-Za-z0-9_-]{32,128}$')
+                   && request.resource.contentType == 'text/calendar'
+                   && request.resource.size < 100 * 1024;
+      allow read: if request.auth != null;
+    }
+  }
+}
+```
+
+實際 Rules 若已發布等效限制可維持。程式上傳路徑為
+`calendar-exports/{familyId}/{UUID}-event.ics`，不會在檔名放入行程標題或成員姓名；
+MIME 與 metadata 的 `contentType` 都固定為 `text/calendar`。
+
+### 匯出檔案隱私與清理
+
+`.ics` 內含行程內容、時間與成員姓名。`getDownloadURL()` 帶有長效下載 token，知道網址者可能
+在檔案刪除或 token 撤銷前存取。純前端不能可靠地在開啟新頁後延遲刪除（使用者可能立即離開
+或關閉頁面），因此本站**不宣稱會自動清理**。
+
+MVP 可定期在 Firebase Console → Storage 手動刪除 `calendar-exports/` 舊檔。正式使用建議設定
+Cloud Storage Lifecycle：
+
+1. 開啟 [Google Cloud Console](https://console.cloud.google.com/)。
+2. 選擇 Firebase 對應專案 → Cloud Storage → Buckets。
+3. 點選本專案 bucket →「Lifecycle／生命週期」→「Add a rule／新增規則」。
+4. 動作選「Delete object／刪除物件」。
+5. 條件選「Age／物件存留時間」，設定 **1 day**。
+6. 確認規則範圍符合 bucket 後儲存。
+
+Lifecycle 刪除並非即時執行，且通常套用整個 bucket；若 bucket 還存放其他需長期保留的檔案，
+請先評估是否拆分 bucket 或改用後端排程精準清理 `calendar-exports/`。
+
+## 步驟六：建立與分享家庭網址
 
 用密碼產生器建立至少 32 碼、只含 `[A-Za-z0-9_-]` 的隨機字串。例如：
 
@@ -108,6 +151,8 @@ https://linyufu0519.github.io/FmailySchdule/?key=<你的全新高強度家庭密
 2. 帶不合法 key（過短或含 `/`、空白、中文字）：同樣維持唯讀且不報錯。
 3. 帶合法的新 key：匿名登入後顯示「已連線（可編輯）」；可新增成員與行程，重新整理仍可讀取。
 4. 換另一個合法 key：應看到獨立的空白家庭空間。
+5. 點「加入手機行事曆」：立即開啟「正在準備行事曆…」頁面，完成上傳後導向 Storage HTTPS
+   網址；確認回應為 `text/calendar` 且可由裝置開啟。
 
 ## 常見問題
 

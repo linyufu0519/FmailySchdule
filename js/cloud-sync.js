@@ -15,13 +15,16 @@ const SDK_VERSION = "10.12.2";
 const FIREBASE_APP_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-app.js`;
 const FIREBASE_AUTH_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-auth.js`;
 const FIREBASE_FIRESTORE_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-firestore.js`;
+const FIREBASE_STORAGE_URL = `https://www.gstatic.com/firebasejs/${SDK_VERSION}/firebase-storage.js`;
 
 let cachedConfig; // undefined = 尚未嘗試讀取；null = 讀取失敗或不存在
 let app = null;
 let auth = null;
 let db = null;
+let storage = null;
 let authModule = null;
 let firestoreModule = null;
+let storageModule = null;
 let currentFamilyId = null;
 
 async function loadConfig() {
@@ -43,12 +46,13 @@ export async function getCloudAvailability() {
 }
 
 async function loadFirebaseSdk() {
-  const [{ initializeApp }, authMod, firestoreMod] = await Promise.all([
+  const [{ initializeApp }, authMod, firestoreMod, storageMod] = await Promise.all([
     import(/* webpackIgnore: true */ FIREBASE_APP_URL),
     import(/* webpackIgnore: true */ FIREBASE_AUTH_URL),
     import(/* webpackIgnore: true */ FIREBASE_FIRESTORE_URL),
+    import(/* webpackIgnore: true */ FIREBASE_STORAGE_URL),
   ]);
-  return { initializeApp, authMod, firestoreMod };
+  return { initializeApp, authMod, firestoreMod, storageMod };
 }
 
 /**
@@ -60,12 +64,14 @@ export async function initCloud() {
   const { configured, config } = await getCloudAvailability();
   if (!configured) return { enabled: false };
 
-  const { initializeApp, authMod, firestoreMod } = await loadFirebaseSdk();
+  const { initializeApp, authMod, firestoreMod, storageMod } = await loadFirebaseSdk();
   authModule = authMod;
   firestoreModule = firestoreMod;
+  storageModule = storageMod;
   app = initializeApp(config);
   auth = authModule.getAuth(app);
   db = firestoreModule.getFirestore(app);
+  storage = storageModule.getStorage(app);
   try {
     await authModule.setPersistence(auth, authModule.browserLocalPersistence);
   } catch (error) {
@@ -93,6 +99,45 @@ export function getFamilyId() {
 export async function signInAnonymously() {
   if (!auth) throw new Error("雲端同步尚未啟用");
   return authModule.signInAnonymously(auth);
+}
+
+export function sanitizeCalendarFileName(fileName) {
+  const safeName = String(fileName || "event.ics")
+    .replace(/[^A-Za-z0-9._-]/g, "_")
+    .replace(/^[._-]+/, "")
+    .slice(0, 80);
+  return safeName.toLowerCase().endsWith(".ics") ? safeName : `${safeName || "event"}.ics`;
+}
+
+export function buildCalendarStoragePath(familyId, fileName, uuid) {
+  if (!/^[A-Za-z0-9_-]{32,128}$/.test(familyId || "")) {
+    throw new Error("家庭識別碼格式不正確");
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(uuid || "")) {
+    throw new Error("匯出檔案識別碼格式不正確");
+  }
+  return `calendar-exports/${familyId}/${uuid}-${sanitizeCalendarFileName(fileName)}`;
+}
+
+export function buildCalendarUploadMetadata(createdAt = new Date().toISOString()) {
+  return {
+    contentType: "text/calendar",
+    contentDisposition: 'attachment; filename="event.ics"',
+    customMetadata: { createdAt },
+  };
+}
+
+export async function uploadCalendarFile(familyId, fileName, icsContent) {
+  if (!storage || !storageModule) throw new Error("Firebase Storage 尚未啟用");
+  const path = buildCalendarStoragePath(familyId, fileName, crypto.randomUUID());
+  const fileRef = storageModule.ref(storage, path);
+  const blob = new Blob([icsContent], { type: "text/calendar" });
+  const snapshot = await storageModule.uploadBytes(
+    fileRef,
+    blob,
+    buildCalendarUploadMetadata()
+  );
+  return storageModule.getDownloadURL(snapshot.ref);
 }
 
 function requireFamilyId() {
