@@ -14,6 +14,7 @@ import { renderMemberRowHTML, renderMemberCheckboxHTML, readableTextColor, valid
 import * as cloud from "./cloud-sync.js";
 import { resolveFamilyId } from "./access.js";
 import { openCalendarExport } from "./calendar-export.js";
+import { isLineInAppBrowser } from "./browser-detect.js";
 
 const state = {
   today: new Date(),
@@ -304,7 +305,12 @@ function openEventDetail(event, occurrenceDateKey) {
 }
 
 function exportEventToCalendar(event, occurrenceDateKey, button) {
-  if (!requireLogin() || button.disabled) return;
+  if (button.disabled) return;
+  if (isLineInAppBrowser(navigator.userAgent)) {
+    openLineBrowserHelp();
+    return;
+  }
+  if (!requireLogin()) return;
   openCalendarExport({
     event: withMemberNames(event),
     occurrenceDateKey,
@@ -320,6 +326,26 @@ function exportEventToCalendar(event, occurrenceDateKey, button) {
     },
   }).catch(() => {});
 }
+
+// ---------- LINE 內建瀏覽器提示 ----------
+function openLineBrowserHelp() {
+  el("line-help-url").value = window.location.href;
+  openModal("modal-line-browser-help");
+}
+
+el("btn-copy-line-help-url").addEventListener("click", async () => {
+  const urlField = el("line-help-url");
+  const currentUrl = urlField.value || window.location.href;
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("clipboard API 不可用");
+    await navigator.clipboard.writeText(currentUrl);
+    showToast("已複製網址");
+  } catch {
+    urlField.focus();
+    urlField.select();
+    showToast("請手動長按選取上方網址並複製");
+  }
+});
 
 function recurrenceLabel(event) {
   if (!event.isRecurring) return "不重複";

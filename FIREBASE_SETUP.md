@@ -154,6 +154,17 @@ https://linyufu0519.github.io/FmailySchdule/?key=<你的全新高強度家庭密
 5. 點「加入手機行事曆」：按鈕顯示「正在準備…」，完成上傳後**於目前分頁**導向 Storage HTTPS
    網址（不開新分頁），確認回應為 `text/calendar` 且裝置能開啟加入行事曆的介面；完成或取消
    匯入後可用瀏覽器返回鍵回到家庭行事曆頁面。
+6. 用 LINE 內建瀏覽器開啟連結後點「加入手機行事曆」：不應觸發任何 Storage 上傳或導向，應改
+   顯示「請使用 Safari 加入行事曆」提示 Modal，並可用「複製目前網址」按鈕取得含 `?key=` 的
+   完整連結，改用 Safari 開啟後重新操作。
+
+### LINE 內建瀏覽器限制
+
+LINE 的 in-app 瀏覽器（WebView）在 iOS／Android 上都無法把 `text/calendar` 正確交給系統
+行事曆處理，因此前端會用 `js/browser-detect.js` 的 `isLineInAppBrowser()` 依 User-Agent
+（比對 `Line/` 標記）判斷，若在 LINE 內建瀏覽器點擊「加入手機行事曆」，會直接攔截、不呼叫
+Storage 上傳，改顯示提示 Modal，引導使用者透過 LINE 右上角「⋯」或分享選單選擇「使用預設
+瀏覽器開啟」／「在 Safari 開啟」，再回到 Safari 重新操作。
 
 ## 常見問題
 
